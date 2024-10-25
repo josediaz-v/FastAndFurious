@@ -1,0 +1,217 @@
+@page "/CarRegistration"
+@using FastAndFurious.Data
+@using Microsoft.EntityFrameworkCore
+@inject IJSRuntime JS
+@inject FastAndFuriousDataContext DbContext
+
+<PageTitle>Car Registration</PageTitle>
+
+<h3>Car Registration Form</h3>
+@if (errorMessage != null)
+{
+    <h4>No Car found.</h4>
+}
+<!-- Car Model Input -->
+<div class="carReg">
+    <fieldset>
+    <legend>Car Model</legend>
+        <input id="modelInput" type="text" @bind="modelInput" placeholder="Enter car model" />
+        <!-- Button to Fetch Car Info -->
+        <button @onclick="FetchCarData">Get Car Info</button>
+        <button @onclick="ClearCarDetails">Clear</button>
+    </fieldset>
+    <!-- Car Details -->
+    <fieldset>
+        <legend>Car Details</legend>
+
+        <label>VIN:</label>
+        <input type="text" @bind="carVin"/>
+
+        <label>Plate:</label>    
+        <input type="text" @bind="carPlate"/>
+
+        <label>Make:</label>
+        <input type="text" @bind="carMake" readonly/>
+
+        <label>Model:</label>    
+        <input type="text" @bind="carModel" readonly/>
+
+        <label>Class:</label>
+        <input @bind="carClass" readonly/>
+
+        <label>Year:</label>
+        <input type="text" @bind="carYear"/>
+
+        <label>Transmission:</label>
+        <label class="radio">
+            <input type="radio" value="Manual" name="transmission" @onchange="(e) => carTransmition = e.Value.ToString()" />Manual
+        </label>
+        <label class="radio">
+            <input type="radio" value="Automatic" name="transmission" @onchange="(e) => carTransmition = e.Value.ToString()" />Auto
+        </label>
+
+        <label>Drive:</label>
+        <input @bind="carDrive"/>
+
+        <label>Cylinders:</label>
+        <input @bind="carCylinders"/>   
+    </fieldset>
+    <!-- Customer Information -->
+    <fieldset>
+        <legend>Customer Information</legend>
+        <label>Name:</label>
+        <input type="text" @bind="customerName" readonly/>
+
+        <label>Contact Number:</label>
+        <input type="text" @bind="customerPhone" />
+
+        <label>Email:</label>
+        <input type="email" @bind="customerEmail" />
+
+        <button @onclick="FetchCustomerData">Get Customer Info</button>
+        <button @onclick="ClearCustomerDetails">Clear</button>
+    </fieldset>
+
+    <button class="submit" @onclick="SubmitForm">Register Car</button>
+</div>
+
+<script>
+    function focusOnModelInput() {
+        document.getElementById('modelInput').focus();
+    }
+</script>
+
+@code {
+    public List<Car> cars; // List to hold multiple cars
+    private string errorMessage;
+    private string modelInput; // To bind input field
+
+    // Car properties
+    private string carVin;
+    private string carPlate;
+    private string carMake;
+    private string carModel;
+    private string carClass;
+    private string carYear;
+    private string carTransmition;
+    private string carDrive;
+    private string carCylinders;
+    
+    // Customer properties
+    private string customerName;
+    private string customerPhone;
+    private string customerEmail;
+
+    public HttpClient httpClient = new HttpClient();
+
+    private async Task FetchCarData()
+    {
+        errorMessage = null; // Reset error message
+
+        try
+        {
+            var url = $"https://api.api-ninjas.com/v1/cars?limit=1&model={modelInput}&X-Api-Key=Q1SDa2NmJnkTjhhckFMaBA==i0Wiz2athUnCsjOV"; // Use a secure way to handle the API key
+            cars = await httpClient.GetFromJsonAsync<List<Car>>(url);
+            if (cars == null || !cars.Any())
+            {
+                errorMessage = "No car found.";
+                ClearCarDetails();
+            }
+            else
+            {
+                // Populate car details
+                carMake = cars[0].make;
+                carModel = cars[0].model;
+                carYear = cars[0].year.ToString();
+                carCylinders = cars[0].cylinders.ToString();
+                carClass = cars[0].@class;
+                carDrive = cars[0].drive;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message; // Capture any error messages
+        }
+    }
+
+    private async Task FetchCustomerData()
+    {
+        var customer = await DbContext.Customers
+            .FirstOrDefaultAsync(c => c.Phone == customerPhone || c.Email == customerEmail);
+
+        if (customer != null)
+        {
+            // Combine FirstName and LastName to set customerName
+            customerName = $"{customer.FirstName} {customer.LastName}";
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "No customer found with the provided details.");
+            ClearCustomerDetails();
+        }
+    }
+
+    private void ClearCarDetails()
+    {
+        modelInput = string.Empty;
+        carVin = string.Empty;
+        carPlate = string.Empty;
+        carMake = string.Empty;
+        carModel = string.Empty;
+        carYear = string.Empty;
+        carCylinders = string.Empty;
+        carClass = string.Empty;
+        carDrive = string.Empty;
+
+        // Call JavaScript function to focus on the input
+        InvokeAsync(() => JS.InvokeVoidAsync("focusOnModelInput"));
+    }
+
+    private void ClearCustomerDetails()
+    {
+        customerName = string.Empty;
+        customerPhone = string.Empty;
+        customerEmail = string.Empty;
+    }
+    
+     private async Task SubmitForm()
+    {
+        // Create a new Car object
+        var newCar = new Car
+        {
+            vin = carVin,
+            plate = carPlate,
+            make = carMake,
+            model = carModel,
+            @class = carClass,
+            year = int.TryParse(carYear, out var year) ? year : (int?)null,
+            transmission = GetTransmissionValue(), // Set the transmission value
+            drive = carDrive,
+            cylinders = int.TryParse(carCylinders, out var cylinders) ? cylinders : (int?)null
+        };
+
+        // Add the new Car to the DbContext and save changes
+        try
+        {
+            DbContext.Cars.Add(newCar);
+            await DbContext.SaveChangesAsync();
+
+            //Show success message
+            await JS.InvokeVoidAsync("alert", "Car registered successfully!");
+
+            // Clear the form
+            ClearCustomerDetails();
+            ClearCarDetails();
+        }
+        catch (Exception ex)
+        {
+            // Show error message
+            await JS.InvokeVoidAsync("alert", $"Error saving car: {ex.Message}");
+        }
+    }
+    private string GetTransmissionValue()
+    {
+        // Return "m" for manual, "a" for automatic
+        return carTransmition == "Manual" ? "m" : "a";
+    }
+}
