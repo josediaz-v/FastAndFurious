@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FastAndFurious")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+de0b68022635c58234b8787ad4b4acfe4655146c")]
 [assembly: System.Reflection.AssemblyProductAttribute("FastAndFurious")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FastAndFurious")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
